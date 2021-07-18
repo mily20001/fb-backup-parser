@@ -6,7 +6,7 @@ console.log('PRELOAD has preloaded');
 contextBridge.exposeInMainWorld('api', {
   send: (channel, data) => {
     // whitelist channels
-    let validChannels = ['toMain', 'click'];
+    let validChannels = ['toMain', 'click', 'app:on-fs-dialog-open'];
     if (validChannels.includes(channel)) {
       ipcRenderer.send(channel, data);
     }
