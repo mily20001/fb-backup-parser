@@ -67,7 +67,87 @@ app.on('activate', () => {
 
 ipcMain.on('click', () => console.log('do something'));
 
+interface Participant {
+  name: string;
+}
+
+interface Photo {
+  uri: string; // zip path of photo
+  creation_timestamp: number;
+}
+
+interface Video {
+  uri: string;
+  creation_timestamp: number;
+  thumbnail: {
+    uri: string;
+  };
+}
+
+interface Sticker {
+  uri: string;
+}
+
+interface Gif {
+  uri: string;
+}
+
+export interface Message {
+  sender_name: string;
+  timestamp_ms: number;
+  content: string;
+  type: string;
+  is_unsent: boolean;
+  photos?: Photo[];
+  videos?: Video[];
+  sticker?: Sticker;
+  gifs?: Gif[];
+}
+
+interface JSONMessagesRaw {
+  title: string;
+  is_still_participant: boolean;
+  thread_type: string;
+  thread_path: string;
+  participants: Participant[];
+  messages: Message[];
+}
+
+export interface JSONMessages extends JSONMessagesRaw {
+  messageCount: number;
+  id: string;
+  last_msg_timestamp: number;
+  first_msg_timestamp: number;
+}
+
+const allConversations: { [key in string]: JSONMessages } = {};
+
+export interface BasicInfo {
+  title: string;
+  // participants: Participant[];
+  messageCount: number;
+  id: string;
+}
+
+// let summary: { [key in string]: BasicInfo } = {};
+
+ipcMain.on('get-messages', async (event, conversation_id) => {
+  // console.log('XD:', xd);
+  // event.reply('user-messages')
+  if (allConversations[conversation_id]) {
+    event.reply('user-messages', allConversations[conversation_id]);
+  } else {
+    console.log('Messages for ', conversation_id, ' not found!');
+  }
+});
+
 ipcMain.on('app:on-fs-dialog-open', async (event) => {
+  // thats bad
+  if (Object.keys(allConversations).length) {
+    event.reply('users', allConversations);
+    console.log('emitted');
+    return [];
+  }
   console.log('app:on-fs-dialog-open');
   const { filePaths, canceled } = await dialog.showOpenDialog({
     properties: ['multiSelections'],
@@ -77,9 +157,8 @@ ipcMain.on('app:on-fs-dialog-open', async (event) => {
     return [];
   }
 
-  console.log('XDDXD  XD', filePaths);
   const allUsersSet = new Set<string>();
-  await Promise.all(
+  const main_promises = Promise.all(
     filePaths.map(async (file) => {
       const zip = new StreamZip.async({ file });
       const allFiles = await zip.entries();
@@ -92,21 +171,94 @@ ipcMain.on('app:on-fs-dialog-open', async (event) => {
       const unique = new Set(usersAll);
       const uniqueArr = Array.from(unique);
 
-      await Promise.all(uniqueArr.map(async user => {
-        const msgFileName = `messages/inbox/${user}/message_1.json`;
-        if (allFiles[msgFileName]) {
-          const msg_data = await zip.entryData(allFiles[msgFileName]);
-          const msg_parsed = JSON.parse(msg_data.toString());
-          console.log(`[${file}] ${utf8.decode(msg_parsed.title || msg_parsed.thread_path)}`);
-        }
-      }))
+      await Promise.all(
+        uniqueArr.map(async (user) => {
+          const msgFileName = `messages/inbox/${user}/message_1.json`;
+          if (allFiles[msgFileName]) {
+            const msg_data = await zip.entryData(allFiles[msgFileName]);
+            const msg_parsed = JSON.parse(msg_data.toString());
+            console.log(`[${file}] ${utf8.decode(msg_parsed.title || msg_parsed.thread_path)}`);
+          }
+          const msgFileRegex = new RegExp(`messages/inbox/${user}/message_\\d+\\.json`);
+          const msgFiles = fileNames.filter((f) => msgFileRegex.test(f));
+          await Promise.all(
+            msgFiles.map(async (f) => {
+              const msg_data = await zip.entryData(allFiles[f]);
+              const msg_parsed = JSON.parse(msg_data.toString()) as JSONMessagesRaw;
+              const { messages: msg_messages, ...msg_details } = msg_parsed;
+              const msg_fixed: JSONMessages = {
+                ...msg_details,
+                title: msg_details.title ? utf8.decode(msg_details.title) : msg_details.title,
+                participants: msg_details.participants
+                  ? msg_details.participants.map((p) => ({ ...p, name: utf8.decode(p.name) }))
+                  : msg_details.participants,
+                messages: msg_messages.map((msg) => ({
+                  ...msg,
+                  sender_name: msg.sender_name ? utf8.decode(msg.sender_name) : msg.sender_name,
+                  content: msg.content ? utf8.decode(msg.content) : msg.content,
+                })),
+                id: user,
+                messageCount: 0,
+                last_msg_timestamp: Math.max(...msg_messages.map((m) => m.timestamp_ms)),
+                first_msg_timestamp: Math.min(...msg_messages.map((m) => m.timestamp_ms)),
+              };
+              if (allConversations[user]) {
+                allConversations[user].messages = allConversations[user].messages.concat(
+                  msg_fixed.messages
+                );
+                allConversations[user].messageCount += msg_fixed.messages.length;
 
-      // console.log(fileNames);
+                if (allConversations[user].last_msg_timestamp < msg_fixed.last_msg_timestamp) {
+                  allConversations[user].last_msg_timestamp = msg_fixed.last_msg_timestamp;
+                }
+
+                if (allConversations[user].first_msg_timestamp > msg_fixed.first_msg_timestamp) {
+                  allConversations[user].first_msg_timestamp = msg_fixed.first_msg_timestamp;
+                }
+                // event.reply(
+                //   'users-progress',
+                //   Object.keys(allConversations).length / uniqueArr.length
+                // );
+              } else {
+                allConversations[user] = msg_fixed;
+                allConversations[user].messageCount = msg_fixed.messages.length;
+              }
+            })
+          );
+        })
+      );
+
       await zip.close();
     })
   );
 
-  const allUsers = Array.from(allUsersSet).sort();
+  console.log('promise ready ', new Date());
+
+  event.reply('users-progress', 0.25);
+  await main_promises;
+
+  for (const user in allConversations) {
+    allConversations[user].messages.sort((a, b) => a.timestamp_ms - b.timestamp_ms);
+  }
+
+  // const allUsers = Array.from(allUsersSet).sort();
+  // summary = Object.keys(allConversations).reduce(
+  //   (all, current) => ({
+  //     ...all,
+  //     [current]: {
+  //       title: allConversations[current].title || 'No title',
+  //       messageCount: allConversations[current].messages.length,
+  //       // participants: allConversations[current].participants,
+  //       id: current,
+  //     },
+  //   }),
+  //   {}
+  // );
+  event.reply('users-progress', 0.5);
+  console.log('sending', new Date());
+  event.reply('users', allConversations);
+  console.log('emitted', new Date());
+  // event.reply('users-progress', 0.75);
   // allUsers.forEach(u => console.log(u))
   // console.log(allUsers);
 
