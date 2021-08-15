@@ -7,7 +7,8 @@
   "scripts": {
     "start": "electron-forge start",
     "package": "electron-forge package",
-    "make": "electron-forge make --platform win32",
+    "make-win": "electron-forge make --platform win32",
+    "make": "electron-forge make",
     "publish": "electron-forge publish",
     "lint": "eslint --ext .ts ."
   },
@@ -90,13 +91,16 @@
     "typescript": "^4.0.2"
   },
   "dependencies": {
+    "@types/react-router-dom": "^5.1.8",
     "@types/utf8": "^3.0.0",
     "antd": "^4.16.1",
     "electron-squirrel-startup": "^1.0.0",
+    "idb-keyval": "^5.1.3",
     "lodash": "^4.17.21",
     "node-stream-zip": "^1.13.6",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
+    "react-router-dom": "^5.2.0",
     "reactn": "^2.2.7",
     "recharts": "^2.0.10",
     "styled-components": "^5.3.0",

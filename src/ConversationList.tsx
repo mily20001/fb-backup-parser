@@ -3,6 +3,9 @@ import styled from 'styled-components';
 import { JSONMessages } from './index';
 import { ColumnsType } from 'antd/es/table';
 import { Button, Table } from 'antd';
+import { LineChartOutlined } from '@ant-design/icons';
+import { useHistory } from 'react-router-dom';
+import * as H from 'history';
 
 interface ConversationTable {
   key: string;
@@ -12,7 +15,7 @@ interface ConversationTable {
   messageCount: number;
 }
 
-const columns: ColumnsType<ConversationTable> = [
+const getColumns: (history: H.History) => ColumnsType<ConversationTable> = (history) => [
   {
     key: 'title',
     dataIndex: 'title',
@@ -39,6 +42,17 @@ const columns: ColumnsType<ConversationTable> = [
     render: (value) => new Date(value).toLocaleDateString(),
     sorter: (a, b) => a.lastMessage - b.lastMessage,
   },
+  {
+    key: 'action',
+    title: 'Action',
+    render: (_, row) => (
+      <Button
+        icon={<LineChartOutlined />}
+        onClick={() => history.push(`/conversation/${row.key}`)}
+      />
+    ),
+    sorter: (a, b) => a.lastMessage - b.lastMessage,
+  },
 ];
 
 const ConversationList: React.FC<{
@@ -53,17 +67,17 @@ const ConversationList: React.FC<{
     title: conversation.title,
   }));
 
+  const history = useHistory();
   const [selected, setSelected] = useState<string[]>([]);
 
   return (
     <MainContainer>
       <Table
-        columns={columns}
+        columns={getColumns(history)}
         dataSource={data}
         rowSelection={{
           type: 'checkbox',
-          onChange: (keys, xd) => {
-            console.log(keys, xd);
+          onChange: (keys) => {
             setSelected(keys as string[]);
           },
         }}

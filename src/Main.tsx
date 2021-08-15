@@ -5,34 +5,47 @@ import styled from 'styled-components';
 import { Button } from 'antd';
 import StartScreen from './StartScreen';
 import ConversationList from './ConversationList';
+import { setGlobal, useGlobal } from 'reactn';
+import { set, keys, get } from 'idb-keyval';
 
 const Main: React.FC = () => {
-  const [basicInfo, setBasicInfo] = useState<JSONMessages[]>([]);
+  const [conversations, setConversations] = useGlobal('conversations');
+  const [owner, setOwner] = useGlobal('owner');
   const [progress, setProgress] = useState(0);
   const [selectedID, setSelectedID] = useState<string[]>([]);
+  const [cacheAvailable, setCacheAvailable] = useState<boolean>(false);
   useEffect(() => {
     console.log('useEffect');
+    keys().then((keys) => setCacheAvailable(keys.includes('conversations')));
     window.api.receive('users', (u) => {
       console.log('received', new Date());
       // console.log(u);
-      setBasicInfo(
+      setConversations(
         (Object.values(u) as JSONMessages[]).sort((a, b) => b.messageCount - a.messageCount)
       );
       console.log('set', new Date());
       console.log(u);
+      set(
+        'conversations',
+        (Object.values(u) as JSONMessages[]).sort((a, b) => b.messageCount - a.messageCount)
+      );
     });
     window.api.receive('users-progress', (u) => {
       setProgress(u * 100);
     });
+    window.api.receive('owner', (u) => {
+      setOwner(u);
+      set('owner', u);
+    });
   }, []);
 
   if (selectedID.length) {
-    console.log('selectedID', selectedID)
+    console.log('selectedID', selectedID);
     return (
       <CoreContainer>
         <MainContainer>
           <ConversationChart
-            conversations={basicInfo.filter((c) => selectedID.includes(c.id))}
+            conversations={conversations.filter((c) => selectedID.includes(c.id))}
             back={() => setSelectedID([])}
           />
         </MainContainer>
@@ -43,23 +56,28 @@ const Main: React.FC = () => {
   return (
     <CoreContainer>
       <MainContainer>
-        {basicInfo.length === 0 ? (
-          <StartScreen onFileChoose={() => window.api.send('app:on-fs-dialog-open')} />
+        {conversations.length === 0 ? (
+          <>
+            <StartScreen
+              onFileChoose={() => window.api.send('app:on-fs-dialog-open')}
+              cacheAvailable={cacheAvailable}
+              loadFromCache={() => {
+                get('owner').then((val) => val && setGlobal({ owner: val }));
+                get('conversations').then((val) => val && setGlobal({ conversations: val }));
+              }}
+            />
+          </>
         ) : (
-          <ConversationList
-            conversations={basicInfo}
-            openConversations={(ids) => setSelectedID(ids)}
-          />
+          <div>
+            <h1>Hi {owner}!</h1>
+            <div>
+              <ConversationList
+                conversations={conversations}
+                openConversations={(ids) => setSelectedID(ids)}
+              />
+            </div>
+          </div>
         )}
-        {/*<Button onClick={() => window.api.send('app:on-fs-dialog-open')}>XDXDXD</Button>*/}
-        {/*<h1>Progress: {progress}%</h1>*/}
-        {/*<div>*/}
-        {/*  {basicInfo.map((entry) => (*/}
-        {/*    <div key={entry.id} onClick={() => setSelectedID(entry.id)}>*/}
-        {/*      {entry.title} {entry.messageCount}*/}
-        {/*    </div>*/}
-        {/*  ))}*/}
-        {/*</div>*/}
       </MainContainer>
     </CoreContainer>
   );
