@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { JSONMessages } from './index';
 import ConversationChart from './ConversationChart';
 import styled from 'styled-components';
-import { Button } from 'antd';
+import { Progress, Spin } from 'antd';
+import { LoadingOutlined } from '@ant-design/icons';
 import StartScreen from './StartScreen';
 import ConversationList from './ConversationList';
 import { setGlobal, useGlobal } from 'reactn';
@@ -11,7 +12,7 @@ import { set, keys, get } from 'idb-keyval';
 const Main: React.FC = () => {
   const [conversations, setConversations] = useGlobal('conversations');
   const [owner, setOwner] = useGlobal('owner');
-  const [progress, setProgress] = useState(0);
+  const [progress, setProgress] = useState(-2);
   const [selectedID, setSelectedID] = useState<string[]>([]);
   const [cacheAvailable, setCacheAvailable] = useState<boolean>(false);
   useEffect(() => {
@@ -31,7 +32,7 @@ const Main: React.FC = () => {
       );
     });
     window.api.receive('users-progress', (u) => {
-      setProgress(u * 100);
+      setProgress(u);
     });
     window.api.receive('owner', (u) => {
       setOwner(u);
@@ -53,11 +54,13 @@ const Main: React.FC = () => {
     );
   }
 
+  const antIcon = <LoadingOutlined style={{ fontSize: 36 }} spin />;
+
   return (
     <CoreContainer>
       <MainContainer>
         {conversations.length === 0 ? (
-          <>
+          progress === -2 ? (
             <StartScreen
               onFileChoose={() => window.api.send('app:on-fs-dialog-open')}
               cacheAvailable={cacheAvailable}
@@ -66,7 +69,15 @@ const Main: React.FC = () => {
                 get('conversations').then((val) => val && setGlobal({ conversations: val }));
               }}
             />
-          </>
+          ) : progress === -1 ? (
+            <div>
+              <Spin indicator={antIcon} />
+            </div>
+          ) : (
+            <div>
+              <Progress type="circle" percent={Math.round(progress)} />
+            </div>
+          )
         ) : (
           <div>
             <h1>Hi {owner}!</h1>
