@@ -4,8 +4,7 @@ import { JSONMessages } from './index';
 import { ColumnsType } from 'antd/es/table';
 import { Button, Table } from 'antd';
 import { LineChartOutlined } from '@ant-design/icons';
-import { useHistory } from 'react-router-dom';
-import * as H from 'history';
+import { NavigateFunction, useNavigate } from 'react-router-dom';
 
 interface ConversationTable {
   key: string;
@@ -15,7 +14,7 @@ interface ConversationTable {
   messageCount: number;
 }
 
-const getColumns: (history: H.History) => ColumnsType<ConversationTable> = (history) => [
+const getColumns: (navigate: NavigateFunction) => ColumnsType<ConversationTable> = (navigate) => [
   {
     key: 'title',
     dataIndex: 'title',
@@ -48,7 +47,7 @@ const getColumns: (history: H.History) => ColumnsType<ConversationTable> = (hist
     render: (_, row) => (
       <Button
         icon={<LineChartOutlined />}
-        onClick={() => history.push(`/conversation/${row.key}`)}
+        onClick={() => navigate(`/conversation/${row.key}`)}
       />
     ),
     sorter: (a, b) => a.lastMessage - b.lastMessage,
@@ -67,13 +66,13 @@ const ConversationList: React.FC<{
     title: conversation.title,
   }));
 
-  const history = useHistory();
+  const navigate = useNavigate();
   const [selected, setSelected] = useState<string[]>([]);
 
   return (
     <MainContainer>
       <Table
-        columns={getColumns(history)}
+        columns={getColumns(navigate)}
         dataSource={data}
         rowSelection={{
           type: 'checkbox',

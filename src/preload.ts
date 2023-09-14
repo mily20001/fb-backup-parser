@@ -4,15 +4,15 @@ const { contextBridge, ipcRenderer } = require('electron');
 // the ipcRenderer without exposing the entire object
 console.log('PRELOAD has preloaded');
 contextBridge.exposeInMainWorld('api', {
-  send: (channel, data) => {
+  send: (channel:string, data:any) => {
     // whitelist channels
-    let validChannels = ['toMain', 'click', 'app:on-fs-dialog-open', 'get-messages'];
+    const validChannels = ['toMain', 'click', 'app:on-fs-dialog-open', 'get-messages'];
     if (validChannels.includes(channel)) {
       ipcRenderer.send(channel, data);
     }
   },
-  receive: (channel, func) => {
-    let validChannels = ['fromMain', 'users', 'users-progress', 'user-messages', 'owner'];
+  receive: (channel: string, func: any) => {
+    const validChannels = ['fromMain', 'users', 'users-progress', 'user-messages', 'owner'];
     if (validChannels.includes(channel)) {
       // Deliberately strip event as it includes `sender`
       ipcRenderer.on(channel, (event, ...args) => func(...args));

@@ -2,6 +2,23 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8">
+    <meta
+        http-equiv="Content-Security-Policy"
+        content="script-src 
+            'self' 
+            'unsafe-inline' 
+            'unsafe-eval'
+            http://localhost:9000/
+            "
+    />
+    <meta
+    http-equiv="Content-Security-Policy"
+    content="connect-src 
+        'self'
+        http://localhost:9000/
+        ws://localhost:9000/ws
+        "
+/>
     <title>Hello World!</title>
   </head>
   <body>

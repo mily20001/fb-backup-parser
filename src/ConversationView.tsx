@@ -7,7 +7,7 @@ import {
   ArrowUpOutlined,
   ArrowDownOutlined,
 } from '@ant-design/icons';
-import { useHistory } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ColumnsType } from 'antd/es/table';
 import { Message } from './index';
 
@@ -207,11 +207,11 @@ const ConversationView: React.FC<{ id: string }> = ({ id }) => {
   const [conversations] = useGlobal('conversations');
   const [owner] = useGlobal('owner');
   const conversation = conversations.find((c) => c.id === id);
-  const history = useHistory();
+  const navigate = useNavigate();
   const stats = getConversationStats(conversation.messages, owner);
   return (
     <MainContainer>
-      <Button icon={<LeftOutlined />} onClick={() => history.goBack()}>
+      <Button icon={<LeftOutlined />} onClick={() => navigate(-1)}>
         Back
       </Button>
       <h1>{conversation.title}</h1>

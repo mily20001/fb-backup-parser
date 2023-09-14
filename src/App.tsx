@@ -1,8 +1,8 @@
 import * as React from 'react';
-import * as ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import Main from './Main';
-import 'antd/dist/antd.css';
-import { BrowserRouter as Router, Switch, Route, Redirect } from 'react-router-dom';
+import 'antd/dist/reset.css';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import ConversationViewRoute from './ConversationViewRoute';
 import { setGlobal } from 'reactn';
 
@@ -18,23 +18,19 @@ declare global {
 setGlobal({ conversations: [] });
 
 function render() {
-  ReactDOM.render(
+  const root = createRoot(document.getElementById('root'))
+  root.render(
     <React.StrictMode>
+      {/* TODO HashRouter is not the greatest */}
       <Router>
-        <Switch>
-          <Route path="/" exact>
-            <Main />
-          </Route>
-          <Route path="/conversation/:id">
-            <ConversationViewRoute />
-          </Route>
-          <Route path="/">
-            <Redirect to="/" />
-          </Route>
-        </Switch>
+        <Routes>
+          <Route path="/" element={<Main />} />
+          <Route path="/conversation/:id" element={<ConversationViewRoute />}/>
+          <Route path="/*" element={<Navigate to="/" />} />
+        </Routes>
       </Router>
     </React.StrictMode>,
-    document.getElementById('root')
+    
   );
 }
 
